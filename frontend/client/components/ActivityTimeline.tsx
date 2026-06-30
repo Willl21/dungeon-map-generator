@@ -1,150 +1,122 @@
-import { Sparkles, Download, Heart, Trash2 } from "lucide-react";
+import { Sparkles, Download, Trash2, UserCog, Wand2, Clock, MapPin } from "lucide-react";
+import { MapMeta } from "@/lib/mapApi";
+import { useMemo } from "react";
 
-interface ActivityEvent {
-    id: string;
-    action: string;
-    details: string;
-    timestamp: string;
-    type: "create" | "download" | "favorite" | "delete";
+// Helper for relative time
+function timeAgo(isoString: string): string {
+    const date = new Date(isoString);
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (seconds < 60) return "Just now";
+    
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-const activityEvents: ActivityEvent[] = [
-    {
-        id: "1",
-        action: "Generated Map",
-        details: "Created Ice Dungeon - Crystal Caverns",
-        timestamp: "2 hours ago",
-        type: "create",
-    },
-    {
-        id: "2",
-        action: "Downloaded Map",
-        details: "Downloaded Shadowmere Fortress (5 hours ago map)",
-        timestamp: "1 hour ago",
-        type: "download",
-    },
-    {
-        id: "3",
-        action: "Favorited Map",
-        details: "Added Swamp Sanctuary to favorites",
-        timestamp: "5 hours ago",
-        type: "favorite",
-    },
-    {
-        id: "4",
-        action: "Generated Map",
-        details: "Created Volcanic Dungeon - Obsidian Depths",
-        timestamp: "1 day ago",
-        type: "create",
-    },
-    {
-        id: "5",
-        action: "Downloaded Map",
-        details: "Downloaded Frostbite Citadel",
-        timestamp: "2 days ago",
-        type: "download",
-    },
-    {
-        id: "6",
-        action: "Generated Map",
-        details: "Created Enchanted Forest - Mystic Grove",
-        timestamp: "1 week ago",
-        type: "create",
-    },
-];
-
-function getActivityIcon(type: string) {
+function getIconColor(type: string): string {
     switch (type) {
-        case "create":
-            return <Sparkles className="h-4 w-4" />;
+        case "generate":
+            return "text-gold-400";
         case "download":
-            return <Download className="h-4 w-4" />;
-        case "favorite":
-            return <Heart className="h-4 w-4" />;
+            return "text-gold-500";
+        case "beautify":
+            return "text-emerald-400";
         case "delete":
-            return <Trash2 className="h-4 w-4" />;
+            return "text-red-400/70";
+        case "profile":
+            return "text-gold-400";
         default:
-            return <Sparkles className="h-4 w-4" />;
+            return "text-gold-400";
     }
 }
 
-function getActivityColor(type: string) {
-    switch (type) {
-        case "create":
-            return "from-cyan-600 to-cyan-700";
-        case "download":
-            return "from-emerald-600 to-emerald-700";
-        case "favorite":
-            return "from-gold-600 to-gold-700";
-        case "delete":
-            return "from-red-600 to-red-700";
-        default:
-            return "from-cyan-600 to-cyan-700";
-    }
-}
+export default function ActivityTimeline({ maps }: { maps: MapMeta[] }) {
+    // Generate activity based on maps
+    const activities = useMemo(() => {
+        if (!maps || maps.length === 0) return [];
 
-export default function ActivityTimeline() {
+        const evts = maps.map(m => {
+            let desc = `Generated ${m.environment} ${m.map_type}`;
+            let type = "generate";
+            let icon = <MapPin className="h-4 w-4" />;
+            
+            if (m.beautify) {
+                desc = `AI Beautified ${m.environment} ${m.map_type}`;
+                type = "beautify";
+                icon = <Sparkles className="h-4 w-4" />;
+            }
+            
+            return {
+                id: `act-${m.id}`,
+                icon,
+                description: desc,
+                timestampStr: m.created_at,
+                timestamp: new Date(m.created_at).getTime(),
+                type
+            };
+        });
+
+        // Sort by timestamp descending
+        evts.sort((a, b) => b.timestamp - a.timestamp);
+        
+        // Take top 8 recent
+        return evts.slice(0, 8);
+    }, [maps]);
     return (
-        <div className="space-y-6">
-            <div>
-                <h2 className="text-2xl font-serif font-bold text-cyan-300 mb-2">
-                    Activity Journal
+        <div className="space-y-5">
+            {/* Section Title */}
+            <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gold-700/20 to-gold-700/5 border border-gold-800/30 flex items-center justify-center text-gold-500">
+                    <Clock className="h-4 w-4" />
+                </div>
+                <h2 className="text-2xl md:text-3xl font-serif font-bold text-gold-400">
+                    Recent Activity
                 </h2>
-                <p className="text-foreground/60 text-sm">
-                    Your recent adventures and creations
-                </p>
             </div>
 
-            <div className="card-magical rounded-xl p-6 border-cyan-600/30">
-                <div className="space-y-6">
-                    {activityEvents.map((event, index) => (
-                        <div key={event.id} className="relative">
-                            {/* Timeline line connector (except for last item) */}
-                            {index < activityEvents.length - 1 && (
-                                <div className="absolute left-7 top-12 w-0.5 h-8 bg-gradient-to-b from-cyan-500/50 to-transparent pointer-events-none" />
-                            )}
-
-                            <div className="flex gap-4">
-                                {/* Timeline icon */}
-                                <div
-                                    className={`relative flex-shrink-0 w-14 h-14 rounded-lg bg-gradient-to-br ${getActivityColor(
-                                        event.type
-                                    )} flex items-center justify-center text-white shadow-lg border border-white/20`}
-                                >
-                                    {getActivityIcon(event.type)}
-                                    <div className="absolute inset-0 rounded-lg bg-white/10 opacity-0 hover:opacity-100 transition-opacity" />
-                                </div>
-
-                                {/* Event content */}
-                                <div className="flex-1 pt-1">
-                                    <h3 className="font-semibold text-foreground mb-1">
-                                        {event.action}
-                                    </h3>
-                                    <p className="text-foreground/70 text-sm mb-2">
-                                        {event.details}
-                                    </p>
-                                    <p className="text-foreground/50 text-xs font-mono">
-                                        {event.timestamp}
-                                    </p>
-                                </div>
-
-                                {/* Decorative element */}
-                                <div className="flex-shrink-0 h-1 w-1 bg-cyan-500/50 rounded-full mt-2" />
+            {/* Activity List */}
+            <div className="bg-stone-900/70 border border-gold-900/20 rounded-xl overflow-hidden">
+                {activities.length === 0 ? (
+                    <div className="px-5 py-8 text-center text-foreground/40 text-sm">
+                        No activity recorded yet.
+                    </div>
+                ) : (
+                    activities.map((event, index) => (
+                        <div
+                            key={event.id}
+                            className={`flex items-center gap-4 px-5 py-4 hover:bg-gold-900/5 transition-colors duration-200 ${
+                                index < activities.length - 1
+                                    ? "border-b border-gold-900/10"
+                                    : ""
+                            }`}
+                        >
+                            {/* Icon */}
+                            <div className={`flex-shrink-0 ${getIconColor(event.type)}`}>
+                                {event.icon}
                             </div>
 
-                            {/* Divider */}
-                            {index < activityEvents.length - 1 && (
-                                <div className="divider-cyan my-4" />
-                            )}
-                        </div>
-                    ))}
-                </div>
-            </div>
+                            {/* Description */}
+                            <span className="flex-1 text-sm text-foreground/80 font-medium capitalize">
+                                {event.description}
+                            </span>
 
-            {/* View all activities link */}
-            <button className="w-full px-4 py-3 text-center border border-cyan-600/30 rounded-lg text-cyan-400 hover:bg-cyan-600/10 transition-all duration-300 font-semibold text-sm">
-                View All Activities
-            </button>
+                            {/* Timestamp */}
+                            <span className="flex-shrink-0 text-xs text-foreground/30 font-mono">
+                                {timeAgo(event.timestampStr)}
+                            </span>
+                        </div>
+                    ))
+                )}
+            </div>
         </div>
     );
 }

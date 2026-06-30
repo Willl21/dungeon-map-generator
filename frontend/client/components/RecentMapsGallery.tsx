@@ -1,305 +1,228 @@
-import { Download, Eye, Trash2 } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
-import { fetchMyMaps, deleteMap, downloadMap, MapMeta } from "@/lib/mapApi";
+import { Download, Eye, Trash2, RefreshCw, Wand2, Search, ChevronDown, Sparkles } from "lucide-react";
+import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { MapMeta, deleteMap, downloadMap } from "@/lib/mapApi";
+import { toast } from "sonner";
 
-// =====================
-// HELPERS
-// =====================
+// Gradient placeholders for map previews (fallback if image_url fails)
+const mapGradients = [
+    "from-stone-700 via-stone-600 to-stone-800",
+    "from-stone-600 via-amber-900/30 to-stone-700",
+    "from-red-950/40 via-stone-700 to-stone-800",
+    "from-stone-600 via-stone-700 to-amber-950/30",
+    "from-stone-700 via-stone-800 to-stone-600",
+    "from-amber-950/30 via-stone-700 to-stone-800",
+];
+
+// Helper to format date
 function formatDate(isoString: string): string {
     if (!isoString) return "-";
-    const date = new Date(isoString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffMins < 1) return "just now";
-    if (diffMins < 60) return `${diffMins} minutes ago`;
-    if (diffHours < 24) return `${diffHours} hours ago`;
-    if (diffDays === 1) return "1 day ago";
-    if (diffDays < 7) return `${diffDays} days ago`;
-    return date.toLocaleDateString();
-}
-
-function capitalize(s: string): string {
-    return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+    return new Date(isoString).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    });
 }
 
 // =====================
 // COMPONENT
 // =====================
-export default function RecentMapsGallery() {
-    const [maps, setMaps] = useState<MapMeta[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+export default function RecentMapsGallery({
+    maps,
+    onDeleteMap,
+    onRefresh,
+}: {
+    maps: MapMeta[];
+    onDeleteMap: (id: number) => void;
+    onRefresh: () => void;
+}) {
+    const navigate = useNavigate();
+    const [searchQuery, setSearchQuery] = useState("");
+    const [filterType, setFilterType] = useState("All Types");
+    const [filterEnv, setFilterEnv] = useState("All Environments");
+    const [filterDate, setFilterDate] = useState("Any Date");
+    const [filterMaps, setFilterMaps] = useState("All Maps");
+    const [sortBy, setSortBy] = useState("Newest");
     const [selectedMap, setSelectedMap] = useState<MapMeta | null>(null);
-    const [deletingId, setDeletingId] = useState<number | null>(null);
-    const [downloadingId, setDownloadingId] = useState<number | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
 
-    // ─── FETCH ───────────────────────────────────────
-    const loadMaps = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const data = await fetchMyMaps();
-            setMaps(data);
-        } catch (err: any) {
-            if (err.message === "NOT_LOGGED_IN" || err.message === "UNAUTHORIZED") {
-                setError("Please login to view your maps.");
-            } else {
-                setError("Failed to load maps.");
-            }
-        } finally {
-            setLoading(false);
+    // Filtered maps
+    const filteredMaps = useMemo(() => {
+        let result = [...maps];
+
+        // Search filter
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            result = result.filter(
+                (m) =>
+                    m.map_type.toLowerCase().includes(q) ||
+                    String(m.seed).includes(q) ||
+                    m.environment.toLowerCase().includes(q)
+            );
         }
-    }, []);
 
-    useEffect(() => {
-        loadMaps();
-    }, [loadMaps]);
+        // Type filter
+        if (filterType !== "All Types") {
+            result = result.filter((m) => m.map_type.toLowerCase() === filterType.toLowerCase());
+        }
 
-    // ─── DELETE ──────────────────────────────────────
-    const handleDelete = async (id: number) => {
-        if (!confirm("Delete this map? This cannot be undone.")) return;
+        // Environment filter
+        if (filterEnv !== "All Environments") {
+            result = result.filter((m) => m.environment.toLowerCase() === filterEnv.toLowerCase());
+        }
 
-        setDeletingId(id);
+        // Beautify filter
+        if (filterMaps === "AI Beautified") {
+            result = result.filter((m) => m.beautify);
+        } else if (filterMaps === "Standard") {
+            result = result.filter((m) => !m.beautify);
+        }
+
+        // Sort
+        if (sortBy === "Oldest") {
+            result.reverse();
+        } else if (sortBy === "A-Z") {
+            result.sort((a, b) => a.map_type.localeCompare(b.map_type));
+        }
+
+        return result;
+    }, [maps, searchQuery, filterType, filterEnv, filterMaps, sortBy]);
+
+    const handleDelete = async (map: MapMeta) => {
+        if (!confirm(`Are you sure you want to delete this ${map.map_type} map?`)) return;
+        setIsDeleting(true);
         try {
-            await deleteMap(id);
-            setMaps((prev) => prev.filter((m) => m.id !== id));
-            if (selectedMap?.id === id) setSelectedMap(null);
-        } catch (err) {
-            alert("Failed to delete map.");
+            await deleteMap(map.id);
+            toast.success("Map deleted successfully");
+            onDeleteMap(map.id);
+            if (selectedMap?.id === map.id) setSelectedMap(null);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to delete map");
         } finally {
-            setDeletingId(null);
+            setIsDeleting(false);
         }
     };
 
-    // ─── DOWNLOAD ────────────────────────────────────
     const handleDownload = async (map: MapMeta) => {
-        setDownloadingId(map.id);
+        setIsDownloading(true);
         try {
             const blob = await downloadMap(map.id);
             const url = window.URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `map_${map.map_type}_${map.environment}_${map.seed}.png`;
-            link.click();
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `map_${map.map_type}_${map.environment}_${map.seed}.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
-        } catch (err) {
-            alert("Failed to download map.");
+            toast.success("Download started");
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to download map");
         } finally {
-            setDownloadingId(null);
+            setIsDownloading(false);
         }
     };
 
-    // ─── LOADING ─────────────────────────────────────
-    if (loading) {
-        return (
-            <div className="space-y-6">
-                <div>
-                    <h2 className="text-2xl font-serif font-bold text-cyan-300 mb-2">
-                        Recent Generated Maps
-                    </h2>
-                    <p className="text-foreground/60 text-sm">Loading your maps...</p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[1, 2, 3].map((i) => (
-                        <div
-                            key={i}
-                            className="card-dark rounded-xl overflow-hidden animate-pulse"
-                        >
-                            <div className="aspect-video bg-slate-800 rounded-lg mb-4" />
-                            <div className="space-y-2 p-4">
-                                <div className="h-4 bg-slate-700 rounded w-3/4" />
-                                <div className="h-3 bg-slate-800 rounded w-1/2" />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        );
-    }
-
-    // ─── ERROR ───────────────────────────────────────
-    if (error) {
-        return (
-            <div className="space-y-4">
-                <h2 className="text-2xl font-serif font-bold text-cyan-300">
-                    Recent Generated Maps
-                </h2>
-                <div className="card-dark rounded-xl p-8 text-center text-red-400">
-                    <p>{error}</p>
-                    <button
-                        onClick={loadMaps}
-                        className="mt-4 px-4 py-2 border border-red-600/40 rounded-lg text-sm hover:bg-red-600/10 transition-all"
-                    >
-                        Retry
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
-    // ─── EMPTY ───────────────────────────────────────
-    if (maps.length === 0) {
-        return (
-            <div className="space-y-4">
-                <h2 className="text-2xl font-serif font-bold text-cyan-300">
-                    Recent Generated Maps
-                </h2>
-                <div className="card-dark rounded-xl p-12 text-center text-foreground/50">
-                    <p className="text-lg">No maps generated yet.</p>
-                    <p className="text-sm mt-2">
-                        Go to the{" "}
-                        <a href="/generate" className="text-cyan-400 hover:underline">
-                            Generator
-                        </a>{" "}
-                        to create your first map!
-                    </p>
-                </div>
-            </div>
-        );
-    }
-
-    // ─── MAIN RENDER ─────────────────────────────────
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-2xl font-serif font-bold text-cyan-300 mb-2">
-                        Recent Generated Maps
-                    </h2>
-                    <p className="text-foreground/60 text-sm">
-                        Your {maps.length} most recent creation{maps.length !== 1 ? "s" : ""}
-                    </p>
-                </div>
+            <div>
+                <h2 className="text-3xl md:text-4xl font-serif font-bold text-foreground mb-1">
+                    My Generated Maps
+                </h2>
+                <p className="text-sm text-foreground/50">
+                    Browse, download, and manage every world you've forged.
+                </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center gap-3">
                 <button
-                    onClick={loadMaps}
-                    className="text-xs text-foreground/50 hover:text-cyan-300 transition-colors border border-slate-700 px-3 py-1.5 rounded-lg"
+                    onClick={() => navigate("/generate")}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gold-700/25 to-gold-700/10 border border-gold-700/40 rounded-lg text-gold-400 text-xs font-bold tracking-wide uppercase hover:from-gold-700/40 hover:to-gold-700/20 hover:border-gold-600/60 transition-all duration-300"
                 >
+                    <Wand2 className="h-3.5 w-3.5" />
+                    Generate New Map
+                </button>
+                <button
+                    onClick={onRefresh}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-stone-800/60 border border-gold-900/20 rounded-lg text-foreground/50 text-xs font-semibold hover:text-gold-400 hover:border-gold-700/40 transition-all duration-300"
+                >
+                    <RefreshCw className="h-3.5 w-3.5" />
                     Refresh
                 </button>
             </div>
 
-            {/* Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {maps.map((map) => (
-                    <div
-                        key={map.id}
-                        className="group magical-card card-dark border-gold-600/30 overflow-hidden"
-                    >
-                        {/* Thumbnail */}
-                        <div
-                            className="relative aspect-video bg-slate-800 rounded-lg overflow-hidden mb-4 cursor-pointer"
-                            onClick={() => setSelectedMap(map)}
-                        >
-                            <img
-                                src={map.image_url}
-                                alt={`${map.map_type} - ${map.environment}`}
-                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                onError={(e) => {
-                                    (e.target as HTMLImageElement).style.display = "none";
-                                }}
-                            />
-
-                            {/* Gradient overlay */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity" />
-
-                            {/* Hover — view button */}
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <div className="bg-cyan-600/80 backdrop-blur p-3 rounded-lg">
-                                    <Eye className="h-5 w-5 text-white" />
-                                </div>
-                            </div>
-
-                            {/* Environment badge */}
-                            <div className="absolute top-3 right-3 bg-gradient-to-r from-gold-600/80 to-gold-700/60 backdrop-blur px-3 py-1 rounded-full text-xs font-semibold text-stone-900">
-                                {capitalize(map.environment)}
-                            </div>
-                        </div>
-
-                        {/* Card Content */}
-                        <div className="relative z-10 space-y-3">
-                            <div>
-                                <h3 className="text-lg font-serif font-bold text-gold-300 group-hover:text-gold-200 transition-colors">
-                                    {capitalize(map.map_type)} Map
-                                </h3>
-                                <p className="text-foreground/60 text-sm">
-                                    {capitalize(map.environment)} · {map.image_preset ?? "square"}
-                                </p>
-                            </div>
-
-                            <div className="flex items-center justify-between text-xs text-foreground/50">
-                                <span className="font-mono">Seed: {map.seed}</span>
-                                <span>{formatDate(map.created_at)}</span>
-                            </div>
-
-                            {/* Action Buttons */}
-                            <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gold-600/20">
-                                {/* Download */}
-                                <button
-                                    onClick={() => handleDownload(map)}
-                                    disabled={downloadingId === map.id}
-                                    className="flex items-center justify-center gap-1 px-3 py-2 bg-gradient-to-r from-gold-600/30 to-gold-600/10 border border-gold-600/40 rounded-lg text-gold-300 text-xs font-semibold hover:from-gold-600/50 hover:to-gold-600/30 transition-all disabled:opacity-40"
-                                >
-                                    <Download className="h-4 w-4" />
-                                    <span className="hidden sm:inline">
-                                        {downloadingId === map.id ? "..." : "Download"}
-                                    </span>
-                                </button>
-
-                                {/* View */}
-                                <button
-                                    onClick={() => setSelectedMap(map)}
-                                    className="flex items-center justify-center gap-1 px-3 py-2 bg-gradient-to-r from-gold-700/30 to-gold-700/10 border border-gold-700/40 rounded-lg text-gold-400 text-xs font-semibold hover:from-gold-700/50 hover:to-gold-700/30 transition-all"
-                                >
-                                    <Eye className="h-4 w-4" />
-                                    <span className="hidden sm:inline">View</span>
-                                </button>
-
-                                {/* Delete */}
-                                <button
-                                    onClick={() => handleDelete(map.id)}
-                                    disabled={deletingId === map.id}
-                                    className="flex items-center justify-center gap-1 px-3 py-2 bg-gradient-to-r from-red-600/30 to-red-600/10 border border-red-600/40 rounded-lg text-red-400 text-xs font-semibold hover:from-red-600/50 hover:to-red-600/30 transition-all disabled:opacity-40"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                    <span className="hidden sm:inline">
-                                        {deletingId === map.id ? "..." : "Delete"}
-                                    </span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                ))}
+            {/* Filters Row */}
+            <div className="flex flex-wrap items-center gap-3">
+                <FilterSelect value={filterType} onChange={setFilterType} options={["All Types", "Dungeon", "Cave", "Forest", "City", "Wilderness"]} />
+                <FilterSelect value={filterEnv} onChange={setFilterEnv} options={["All Environments", "Swamp", "Ruins", "Cave", "Urban", "Desert", "Mountain"]} />
+                <FilterSelect value={filterDate} onChange={setFilterDate} options={["Any Date", "Last Week", "Last Month", "Last Year"]} />
+                <FilterSelect value={filterMaps} onChange={setFilterMaps} options={["All Maps", "AI Beautified", "Standard"]} />
+                <FilterSelect value={sortBy} onChange={setSortBy} options={["Newest", "Oldest", "A-Z"]} />
             </div>
 
-            {/* Modal — Full View */}
+            {/* Search Bar */}
+            <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/30 pointer-events-none" />
+                <input
+                    type="text"
+                    placeholder="Search maps..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 bg-stone-800/60 border border-gold-900/20 rounded-lg text-sm text-foreground placeholder-foreground/30 focus:outline-none focus:border-gold-600/40 focus:ring-1 focus:ring-gold-600/20 transition-all"
+                />
+            </div>
+
+            {/* Maps Grid */}
+            {filteredMaps.length === 0 ? (
+                <div className="text-center py-12 text-foreground/40">
+                    <p className="text-lg font-serif">{maps.length === 0 ? "You haven't forged any worlds yet." : "No maps found"}</p>
+                    <p className="text-sm mt-1">{maps.length === 0 ? "Click 'Generate New Map' to begin your journey." : "Try adjusting your filters or search query."}</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {filteredMaps.map((map, idx) => (
+                        <MapCard
+                            key={map.id}
+                            map={map}
+                            gradient={mapGradients[idx % mapGradients.length]}
+                            onView={() => setSelectedMap(map)}
+                            onDownload={() => handleDownload(map)}
+                            onDelete={() => handleDelete(map)}
+                            isDownloading={isDownloading}
+                            isDeleting={isDeleting}
+                        />
+                    ))}
+                </div>
+            )}
+
+            {/* View Modal */}
             {selectedMap && (
                 <div
-                    className="fixed inset-0 bg-black/80 backdrop-blur z-50 flex items-center justify-center p-4"
+                    className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
                     onClick={() => setSelectedMap(null)}
                 >
                     <div
-                        className="bg-card rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+                        className="bg-stone-900 border border-gold-900/30 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Modal Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-gold-900/30">
+                        <div className="flex items-center justify-between p-6 border-b border-gold-900/20">
                             <div>
-                                <h3 className="text-2xl font-serif font-bold text-foreground">
-                                    {capitalize(selectedMap.map_type)} Map
+                                <h3 className="text-2xl font-serif font-bold text-foreground capitalize">
+                                    {selectedMap.map_type} Map
                                 </h3>
-                                <p className="text-foreground/60 text-sm mt-1">
-                                    {capitalize(selectedMap.environment)} · Seed {selectedMap.seed} ·{" "}
-                                    {formatDate(selectedMap.created_at)}
+                                <p className="text-foreground/50 text-sm mt-1 capitalize">
+                                    {selectedMap.map_type} · {selectedMap.environment} · Seed {selectedMap.seed}
                                 </p>
                             </div>
                             <button
                                 onClick={() => setSelectedMap(null)}
-                                className="text-foreground/60 hover:text-gold-400 transition-colors text-2xl leading-none"
+                                className="text-foreground/50 hover:text-gold-400 transition-colors text-2xl leading-none"
                             >
                                 ×
                             </button>
@@ -307,35 +230,209 @@ export default function RecentMapsGallery() {
 
                         {/* Modal Image */}
                         <div className="p-6">
-                            <img
-                                src={selectedMap.image_url}
-                                alt={`${selectedMap.map_type} - ${selectedMap.environment}`}
-                                className="w-full rounded-xl"
-                            />
+                            <div className="aspect-video rounded-xl bg-gradient-to-br from-stone-700 via-stone-600 to-stone-800 flex items-center justify-center overflow-hidden border border-gold-900/20">
+                                {selectedMap.image_url ? (
+                                    <img src={selectedMap.image_url} alt="Map Preview" className="w-full h-full object-cover" />
+                                ) : (
+                                    <span className="text-foreground/20 text-sm font-mono">Image missing</span>
+                                )}
+                            </div>
 
-                            {/* Modal Actions */}
+                            {/* Tags */}
+                            <div className="flex flex-wrap gap-2 mt-4">
+                                <TagChip label={selectedMap.map_type} />
+                                <TagChip label={selectedMap.environment} />
+                                <TagChip label={selectedMap.image_preset || "square"} />
+                                {selectedMap.beautify && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-wide text-emerald-400 bg-emerald-600/15 border border-emerald-600/30 px-2.5 py-1 rounded-full uppercase">
+                                        <Sparkles className="h-3 w-3" />
+                                        AI Beautified
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Actions */}
                             <div className="grid grid-cols-2 gap-4 mt-6">
-                                <button
+                                <button 
                                     onClick={() => handleDownload(selectedMap)}
-                                    disabled={downloadingId === selectedMap.id}
-                                    className="px-6 py-2 bg-gradient-to-r from-gold-600 to-gold-700 text-stone-900 rounded-lg font-semibold hover:shadow-lg hover:shadow-gold-500/40 transition-all disabled:opacity-50"
+                                    disabled={isDownloading}
+                                    className="px-6 py-2.5 bg-gradient-to-r from-gold-600 to-gold-700 text-stone-900 rounded-lg font-semibold text-sm hover:shadow-lg hover:shadow-gold-500/30 transition-all disabled:opacity-50"
                                 >
-                                    {downloadingId === selectedMap.id ? "Downloading..." : "Download PNG"}
+                                    {isDownloading ? "Downloading..." : "Download PNG"}
                                 </button>
-                                <button
-                                    onClick={() => {
-                                        handleDelete(selectedMap.id);
-                                    }}
-                                    disabled={deletingId === selectedMap.id}
-                                    className="px-6 py-2 border border-red-600/40 text-red-400 rounded-lg hover:bg-red-600/10 transition-all disabled:opacity-50"
+                                <button 
+                                    onClick={() => handleDelete(selectedMap)}
+                                    disabled={isDeleting}
+                                    className="px-6 py-2.5 border border-red-600/30 text-red-400 rounded-lg text-sm font-semibold hover:bg-red-600/10 transition-all disabled:opacity-50"
                                 >
-                                    {deletingId === selectedMap.id ? "Deleting..." : "Delete Map"}
+                                    {isDeleting ? "Deleting..." : "Delete Map"}
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
             )}
+        </div>
+    );
+}
+
+// =====================
+// MAP CARD
+// =====================
+function MapCard({
+    map,
+    gradient,
+    onView,
+    onDownload,
+    onDelete,
+    isDownloading,
+    isDeleting
+}: {
+    map: MapMeta;
+    gradient: string;
+    onView: () => void;
+    onDownload: () => void;
+    onDelete: () => void;
+    isDownloading: boolean;
+    isDeleting: boolean;
+}) {
+    return (
+        <div className="group bg-stone-900/70 border border-gold-900/20 rounded-xl overflow-hidden hover:border-gold-700/40 transition-all duration-300">
+            {/* Thumbnail */}
+            <div
+                className="relative aspect-[16/10] overflow-hidden cursor-pointer"
+                onClick={onView}
+            >
+                {/* If image_url exists, show image. Otherwise show gradient placeholder */}
+                {map.image_url ? (
+                    <img
+                        src={map.image_url}
+                        alt={map.map_type}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                ) : (
+                    <div className={`w-full h-full bg-gradient-to-br ${gradient} transition-transform duration-500 group-hover:scale-105`}>
+                        {/* Grid overlay pattern */}
+                        <div className="absolute inset-0 opacity-10">
+                            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                                <defs>
+                                    <pattern id={`grid-${map.id}`} width="40" height="40" patternUnits="userSpaceOnUse">
+                                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-gold-500" />
+                                    </pattern>
+                                </defs>
+                                <rect width="100%" height="100%" fill={`url(#grid-${map.id})`} />
+                            </svg>
+                        </div>
+                        {/* Room shapes */}
+                        <div className="absolute inset-0 flex items-center justify-center opacity-15">
+                            <div className="grid grid-cols-3 gap-2 w-2/3 h-2/3">
+                                {[...Array(6)].map((_, i) => (
+                                    <div key={i} className="bg-gold-600/40 border border-gold-600/20 rounded-sm" />
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-stone-900/80 via-transparent to-transparent" />
+
+                {/* AI Beautified Badge */}
+                {map.beautify && (
+                    <div className="absolute top-3 right-3 flex items-center gap-1 bg-emerald-700/70 backdrop-blur-sm px-2.5 py-1 rounded-md text-[10px] font-bold text-white tracking-wide uppercase">
+                        <Sparkles className="h-3 w-3" />
+                        AI Beautified
+                    </div>
+                )}
+            </div>
+
+            {/* Card Content */}
+            <div className="p-4 space-y-3">
+                {/* Map Name */}
+                <h3 className="text-base font-serif font-bold text-foreground group-hover:text-gold-300 transition-colors capitalize">
+                    {map.map_type} Map
+                </h3>
+
+                {/* Tags */}
+                <div className="flex flex-wrap gap-1.5">
+                    <TagChip label={map.map_type} />
+                    <TagChip label={map.environment} />
+                    <TagChip label={map.image_preset || "square"} />
+                </div>
+
+                {/* Seed & Date */}
+                <div className="flex items-center justify-between text-[11px] text-foreground/35 font-mono">
+                    <span>{map.seed}</span>
+                    <span>{formatDate(map.created_at)}</span>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center gap-2 pt-2 border-t border-gold-900/15">
+                    <button
+                        onClick={onView}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-stone-800/60 border border-gold-900/20 rounded-lg text-foreground/60 text-xs font-semibold hover:text-gold-400 hover:border-gold-700/40 transition-all duration-200"
+                    >
+                        <Eye className="h-3.5 w-3.5" />
+                        View
+                    </button>
+                    <button 
+                        onClick={onDownload}
+                        disabled={isDownloading}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-gold-700/20 to-gold-700/10 border border-gold-700/30 rounded-lg text-gold-400 text-xs font-semibold hover:from-gold-700/30 hover:to-gold-700/20 hover:border-gold-600/50 transition-all duration-200 disabled:opacity-50"
+                    >
+                        <Download className="h-3.5 w-3.5" />
+                        {isDownloading ? "..." : "Save"}
+                    </button>
+                    <button 
+                        onClick={onDelete}
+                        disabled={isDeleting}
+                        className="w-9 h-9 flex items-center justify-center bg-red-950/30 border border-red-800/20 rounded-lg text-red-400/60 hover:text-red-400 hover:border-red-600/40 hover:bg-red-950/50 transition-all duration-200 disabled:opacity-50"
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// =====================
+// TAG CHIP
+// =====================
+function TagChip({ label }: { label: string }) {
+    return (
+        <span className="inline-block text-[10px] font-semibold text-foreground/50 bg-stone-800/60 border border-gold-900/15 px-2 py-0.5 rounded-full">
+            {label}
+        </span>
+    );
+}
+
+// =====================
+// FILTER SELECT
+// =====================
+function FilterSelect({
+    value,
+    onChange,
+    options,
+}: {
+    value: string;
+    onChange: (v: string) => void;
+    options: string[];
+}) {
+    return (
+        <div className="relative">
+            <select
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="appearance-none bg-stone-800/50 border border-gold-900/20 rounded-lg text-xs text-foreground/60 font-semibold pl-3 pr-7 py-2 cursor-pointer hover:border-gold-700/40 focus:outline-none focus:border-gold-600/40 transition-all"
+            >
+                {options.map((opt) => (
+                    <option key={opt} value={opt}>
+                        {opt}
+                    </option>
+                ))}
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-foreground/30 pointer-events-none" />
         </div>
     );
 }

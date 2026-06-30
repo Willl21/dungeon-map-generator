@@ -34,6 +34,30 @@ export interface MapMeta {
   created_at: string;
 }
 
+export interface UserInfo {
+  id: number;
+  username: string;
+  email: string;
+  created_at: string;
+}
+
+export async function fetchMe(): Promise<UserInfo> {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("NOT_LOGGED_IN");
+
+  const res = await fetch(`${BASE_URL}/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (res.status === 401) {
+    localStorage.removeItem("token");
+    throw new Error("UNAUTHORIZED");
+  }
+
+  if (!res.ok) throw new Error("Failed to load profile");
+  return res.json();
+}
+
 // =====================
 // AUTH HEADER
 // =====================
