@@ -39,15 +39,8 @@ from renderers.base_renderer import render_to_image
 from services.sd_service import beautify_map
 from services.map_service import save_map_file, save_map_record, delete_map_file
 
-
-# =====================
-# INIT
-# =====================
-
-# Buat semua tabel (termasuk generated_maps) jika belum ada
 models.Base.metadata.create_all(bind=engine)
 
-# Pastikan folder uploads ada sejak startup
 Path("uploads").mkdir(exist_ok=True)
 
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
@@ -61,13 +54,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Static files — akses: http://localhost:8000/uploads/users/3/map_xxx.png
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-
-
-# =====================
-# AUTH SECURITY
-# =====================
 
 security = HTTPBearer()
 
@@ -87,10 +74,6 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     except JWTError:
         raise HTTPException(401, "Invalid or expired token")
 
-
-# =====================
-# REQUEST / RESPONSE MODELS
-# =====================
 
 class RegisterRequest(BaseModel):
     username: str
@@ -134,10 +117,6 @@ class MapMeta(BaseModel):
     image_url: str
     created_at: str
 
-
-# =====================
-# CONFIG
-# =====================
 
 GENERATORS = {
     "world": generate_world,
@@ -185,10 +164,6 @@ def get_output_size(map_type, preset):
     return IMAGE_PRESETS[selected]
 
 
-# =====================
-# CORE MAP LOGIC
-# =====================
-
 async def build_map(req: MapRequest):
     width, height = get_map_size(req.map_type)
 
@@ -221,17 +196,12 @@ async def build_map(req: MapRequest):
             req.map_type,
             req.environment
         )
-        # beauty_result adalah data:image/png;base64,... atau None
         if beauty_result and beauty_result.startswith("data:image"):
             b64 = beauty_result.split(",")[1]
             final_bytes = base64.b64decode(b64)
 
     return result, final_bytes
 
-
-# =====================
-# AUTH ENDPOINTS
-# =====================
 
 @app.post("/register")
 def register(req: RegisterRequest):
@@ -291,10 +261,6 @@ def login(req: LoginRequest):
     }
 
 
-# =====================
-# ME (🔒 PROTECTED)
-# =====================
-
 @app.get("/me")
 def get_me(user_id: int = Depends(get_current_user)):
     """Kembalikan data user yang sedang login."""
@@ -313,10 +279,6 @@ def get_me(user_id: int = Depends(get_current_user)):
         db.close()
 
 
-# =====================
-# GENERATE (🔒 PROTECTED)
-# =====================
-
 @app.post("/generate", response_model=MapResponse)
 async def generate_map(
     req: MapRequest,
@@ -329,14 +291,8 @@ async def generate_map(
         raise HTTPException(400, "invalid environment")
 
     result, final_bytes = await build_map(req)
-
-    # Simpan PNG ke disk
     file_path = save_map_file(final_bytes, user_id)
-
-    # Path relatif untuk disimpan di DB (forward slash, Windows compat)
-    relative_path = file_path.as_posix()  # e.g. "uploads/users/3/map_20260625153015.png"
-
-    # Simpan metadata ke DB
+    relative_path = file_path.as_posix()
     db = SessionLocal()
     try:
         record = save_map_record(
@@ -354,11 +310,8 @@ async def generate_map(
         db.close()
 
     image_url = f"{BASE_URL}/{relative_path}"
-
     width, height = get_map_size(req.map_type)
-
     print(f"[generate] user={user_id} map_id={record_id} path={relative_path}")
-
     return MapResponse(
         id=record_id,
         seed=req.seed,
@@ -371,14 +324,8 @@ async def generate_map(
         image_url=image_url,
     )
 
-
-# =====================
-# MY MAPS (🔒 PROTECTED)
-# =====================
-
 @app.get("/my-maps", response_model=list[MapMeta])
 def my_maps(user_id: int = Depends(get_current_user)):
-    """Kembalikan semua map milik user yang login, diurutkan dari terbaru."""
     db = SessionLocal()
     try:
         maps = (

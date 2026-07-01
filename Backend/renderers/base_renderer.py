@@ -1,7 +1,6 @@
 from PIL import Image, ImageDraw
 import io
 
-# Warna per tile type — ini yang jadi input ke Stable Diffusion
 TILE_COLORS = {
     # World
     "deep_water":       (58,  122, 191),
@@ -78,7 +77,7 @@ OBJECT_COLORS = {
     "capital": (255, 215, 0),
 }
 
-TILE_SIZE = 16  # pixel per tile — cukup buat SD input
+TILE_SIZE = 16
 OUTPUT_SIZE = (1024, 1024)
 
 def render_to_image(
@@ -86,25 +85,18 @@ def render_to_image(
     objects: list[dict],
     output_size: tuple[int, int] = (1024, 1024)
 ) -> bytes:
-    """
-    Render grid tiles + objects menjadi PNG image (bytes).
-    PNG ini dipakai sebagai input img2img ke Stable Diffusion.
-    Resolusi kecil (16px/tile) cukup — SD akan upscale & beautify.
-    """
     height = len(tiles)
     width = len(tiles[0]) if tiles else 0
 
     img = Image.new("RGB", (width * TILE_SIZE, height * TILE_SIZE), (0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    # Draw tiles
     for y, row in enumerate(tiles):
         for x, tile in enumerate(row):
             color = TILE_COLORS.get(tile, (128, 128, 128))
             px, py = x * TILE_SIZE, y * TILE_SIZE
             draw.rectangle([px, py, px+TILE_SIZE-1, py+TILE_SIZE-1], fill=color)
 
-    # Draw objects (dot marker di atas tile)
     for obj in objects:
         ox, oy = obj["x"] * TILE_SIZE, obj["y"] * TILE_SIZE
         color = OBJECT_COLORS.get(obj.get("type", "rock"), (255, 255, 255))
@@ -112,11 +104,8 @@ def render_to_image(
         r = TILE_SIZE // 3
         draw.ellipse([cx-r, cy-r, cx+r, cy+r], fill=color)
 
-    # Convert ke bytes
-    # Resize ke 1024x1024 buat Stability AI
     img = img.resize(output_size, Image.LANCZOS)
 
-    # Convert ke bytes
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     buf.seek(0)
