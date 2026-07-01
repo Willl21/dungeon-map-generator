@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import DashboardNavbar from "@/components/DashboardNavbar";
+import Navbar from "@/components/Navbar";
 import ProfileCard from "@/components/ProfileCard";
 import StatisticsCards from "@/components/StatisticsCards";
 import RecentMapsGallery from "@/components/RecentMapsGallery";
@@ -53,8 +53,8 @@ export default function Dashboard() {
     // Loading State
     if (loading) {
         return (
-            <div className="min-h-screen bg-background flex flex-col items-center justify-center">
-                <DashboardNavbar />
+            <div className="min-h-screen bg-background flex flex-col items-center justify-center pt-20">
+                <Navbar />
                 <div className="flex-1 flex flex-col items-center justify-center space-y-4">
                     <div className="w-16 h-16 border-4 border-gold-600/30 border-t-gold-500 rounded-full animate-spin" />
                     <p className="text-gold-400 font-serif animate-pulse">Consulting the ancient tomes...</p>
@@ -66,8 +66,8 @@ export default function Dashboard() {
     // Error State
     if (error) {
         return (
-            <div className="min-h-screen bg-background flex flex-col items-center justify-center">
-                <DashboardNavbar />
+            <div className="min-h-screen bg-background flex flex-col items-center justify-center pt-20">
+                <Navbar />
                 <div className="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto">
                     <div className="w-16 h-16 rounded-full bg-red-950/50 flex items-center justify-center text-red-500 text-3xl mb-4">
                         ⚠️
@@ -89,10 +89,10 @@ export default function Dashboard() {
     return (
         <div className="min-h-screen bg-background">
             {/* Dashboard Navbar */}
-            <DashboardNavbar />
+            <Navbar />
 
             {/* Main Content */}
-            <main className="relative">
+            <main className="relative pt-20">
                 {/* Background effects */}
                 <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
                     <div className="absolute top-20 right-10 w-96 h-96 bg-gold-500/5 rounded-full blur-3xl animate-float" />

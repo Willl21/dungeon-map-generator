@@ -16,28 +16,20 @@ export default function Generator() {
   });
 
   const [image, setImage] = useState<string | null>(null);
-  const [mapId, setMapId] = useState<number | null>(null);  // 🔥 ID map dari DB
+  const [mapId, setMapId] = useState<number | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // 🔥 LOGIN STATE
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // 🔥 SEED STATE
   const [seedInput, setSeedInput] = useState<string>("");
   const [usedSeed, setUsedSeed] = useState<number | null>(null);
 
-  // =====================
-  // CHECK LOGIN
-  // =====================
   useEffect(() => {
     const token = localStorage.getItem("token");
     setIsLoggedIn(!!token);
   }, []);
 
-  // =====================
-  // GENERATE
-  // =====================
   const handleGenerate = async (forceSeed?: number) => {
     if (!isLoggedIn) {
       alert("Please login first");
@@ -62,7 +54,7 @@ export default function Generator() {
       });
 
       setImage(res.image_url || null);
-      setMapId(res.id);          // 🔥 simpan ID untuk download
+      setMapId(res.id);          
       setUsedSeed(finalSeed);
     } catch (err) {
       console.error(err);
@@ -72,9 +64,6 @@ export default function Generator() {
     setIsGenerating(false);
   };
 
-  // =====================
-  // REGENERATE
-  // =====================
   const handleRegenerate = () => {
     if (usedSeed) {
       handleGenerate(usedSeed);
@@ -83,9 +72,6 @@ export default function Generator() {
     }
   };
 
-  // =====================
-  // DOWNLOAD (🔐 TOKEN + ID)
-  // =====================
   const handleDownload = async () => {
     if (!image || mapId === null) return;
 
@@ -109,9 +95,6 @@ export default function Generator() {
     setIsDownloading(false);
   };
 
-  // =====================
-  // COPY SEED
-  // =====================
   const handleCopySeed = () => {
     if (usedSeed) {
       navigator.clipboard.writeText(String(usedSeed));

@@ -22,5 +22,5 @@ class GeneratedMap(Base):
     seed = Column(Integer, nullable=False)
     image_preset = Column(String(50), nullable=True)
     beautify = Column(Boolean, default=True)
-    image_path = Column(String(500), nullable=False)   # relative path: uploads/users/{id}/map_xxx.png
-    created_at = Column(TIMESTAMP, server_default=func.now())
+    image_path = Column(String(500), nullable=False)
+    created_at = Column(TIMESTAMP, server_default=func.now())

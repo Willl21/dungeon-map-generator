@@ -1,8 +1,10 @@
-import { X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Menu, X } from "lucide-react";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function DashboardNavbar() {
     const navigate = useNavigate();
+    const [isOpen, setIsOpen] = useState(false);
 
     return (
         <nav className="sticky top-0 z-50 w-full bg-gradient-to-r from-stone-950 via-stone-900 to-stone-950 border-b border-gold-900/40 backdrop-blur-md">
@@ -32,23 +34,41 @@ export default function DashboardNavbar() {
                         </div>
                     </div>
 
-                    {/* Center — Close Button (mobile: right, desktop: center) */}
-                    <button
-                        onClick={() => navigate("/")}
-                        className="md:absolute md:left-1/2 md:-translate-x-1/2 w-10 h-10 rounded-full bg-stone-800/80 border border-gold-900/30 flex items-center justify-center text-foreground/60 hover:text-gold-400 hover:border-gold-600/50 transition-all duration-300 hover:bg-stone-700/50"
-                        title="Return to Home"
-                    >
-                        <X className="h-5 w-5" />
-                    </button>
+                    {/* Center — Navigation */}
+                    <div className="hidden md:flex items-center space-x-8 md:absolute md:left-1/2 md:-translate-x-1/2">
+                        <Link to="/" className="text-foreground/80 hover:text-gold-400 transition-colors text-sm font-semibold">Home</Link>
+                        <Link to="/generate" className="text-foreground/80 hover:text-gold-400 transition-colors text-sm font-semibold">Generate</Link>
+                        <Link to="/features" className="text-foreground/80 hover:text-gold-400 transition-colors text-sm font-semibold">Features</Link>
+                        <Link to="/about" className="text-foreground/80 hover:text-gold-400 transition-colors text-sm font-semibold">About</Link>
+                    </div>
 
-                    {/* Right — Fantasy Date */}
-                    <div className="hidden sm:block text-right">
-                        <span className="text-xs font-serif italic text-foreground/40">
-                            Moon of the Long Night · 1372 DR
-                        </span>
+                    {/* Right — Fantasy Date & Mobile Menu Button */}
+                    <div className="flex items-center gap-4">
+                        <div className="hidden sm:block text-right">
+                            <span className="text-xs font-serif italic text-foreground/40">
+                                Moon of the Long Night · 1372 DR
+                            </span>
+                        </div>
+                        <button
+                            onClick={() => setIsOpen(!isOpen)}
+                            className="md:hidden text-gold-400 hover:text-gold-300"
+                        >
+                            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                        </button>
                     </div>
                 </div>
             </div>
+
+            {/* Mobile Menu */}
+            {isOpen && (
+                <div className="md:hidden border-t border-gold-900/30 bg-stone-950 px-4 py-4 space-y-3 shadow-xl">
+                    <Link to="/" onClick={() => setIsOpen(false)} className="block text-foreground/80 hover:text-gold-400 font-medium">Home</Link>
+                    <Link to="/generate" onClick={() => setIsOpen(false)} className="block text-foreground/80 hover:text-gold-400 font-medium">Generate</Link>
+                    <Link to="/features" onClick={() => setIsOpen(false)} className="block text-foreground/80 hover:text-gold-400 font-medium">Features</Link>
+                    <Link to="/about" onClick={() => setIsOpen(false)} className="block text-foreground/80 hover:text-gold-400 font-medium">About</Link>
+                </div>
+            )}
         </nav>
     );
 }
+
