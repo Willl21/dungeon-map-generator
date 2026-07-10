@@ -91,7 +91,7 @@ export default function MyMaps() {
   // ─── LOADING STATE ────────────────────────────────
   if (loading) {
     return (
-      <Layout backgroundState="dashboard">
+      <Layout>
         <div className="py-12 px-4">
           <h1 className="text-4xl font-serif font-bold text-gold-300 mb-8">My Maps</h1>
           <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
@@ -114,7 +114,7 @@ export default function MyMaps() {
   // ─── EMPTY STATE ──────────────────────────────────
   if (maps.length === 0) {
     return (
-      <Layout backgroundState="dashboard">
+      <Layout>
         <div className="flex flex-col items-center justify-center text-center py-24 px-4">
           {/* Decorative scroll icon */}
           <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gold-600/20 to-gold-600/5 border border-gold-600/30 flex items-center justify-center mb-6 text-5xl">
@@ -139,7 +139,7 @@ export default function MyMaps() {
 
   // ─── MAIN LIST ────────────────────────────────────
   return (
-    <Layout backgroundState="dashboard">
+    <Layout>
       <div className="py-12 px-4 max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">

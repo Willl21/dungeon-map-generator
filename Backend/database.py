@@ -1,9 +1,8 @@
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-DATABASE_URL = os.environ["DATABASE_URL"]
+DATABASE_URL = "mysql+pymysql://root:@localhost/dnd"
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_recycle=280)
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()

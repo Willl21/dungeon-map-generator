@@ -9,8 +9,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
-import { BackgroundManager, BackgroundProvider } from "@/background";
-
 import Index from "./pages/Index";
 import Generate from "./pages/Generate";
 import FeaturesPage from "./pages/Features";
@@ -43,46 +41,39 @@ const App = () => (
         <Toaster />
         <Sonner />
 
-        {/* BackgroundProvider + BackgroundManager are mounted once, above
-            the router, so the background is never unmounted/recreated by
-            navigation — it's one continuous, living canvas for the whole
-            app, not something each route renders for itself. */}
-        <BackgroundProvider>
-          <BackgroundManager />
+        <BrowserRouter>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<Index />} />
+            <Route path="/generate" element={<Generate />} />
+            <Route path="/features" element={<FeaturesPage />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
-          <BrowserRouter>
-            <Routes>
-              {/* Public routes */}
-              <Route path="/" element={<Index />} />
-              <Route path="/generate" element={<Generate />} />
-              <Route path="/features" element={<FeaturesPage />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
+            {/* Protected routes */}
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-maps"
+              element={
+                <ProtectedRoute>
+                  <MyMaps />
+                </ProtectedRoute>
+              }
+            />
 
-              {/* Protected routes */}
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/my-maps"
-                element={
-                  <ProtectedRoute>
-                    <MyMaps />
-                  </ProtectedRoute>
-                }
-              />
+            {/* fallback */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
 
-              {/* fallback */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </BackgroundProvider>
       </TooltipProvider>
     </QueryClientProvider>
   </AuthProvider>

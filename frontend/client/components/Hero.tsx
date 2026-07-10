@@ -18,15 +18,26 @@ export default function Hero() {
         <source src="/dndvideo.mp4" type="video/mp4" />
         Your browser does not support the video tag.
       </video>
-      {/* Darkening overlay for text readability — neutral black, no color tint */}
+      {/* Background with gradient overlay */}
       <div
         className="absolute inset-0 z-0"
         style={{
-          backgroundImage: `linear-gradient(135deg, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.75) 50%, rgba(0, 0, 0, 0.65) 100%)`,
+          backgroundImage: `
+            linear-gradient(135deg, rgba(20, 12, 8, 0.7) 0%, rgba(40, 20, 10, 0.8) 50%, rgba(60, 30, 15, 0.7) 100%),
+            radial-gradient(ellipse at 20% 50%, rgba(201, 164, 97, 0.1) 0%, transparent 50%),
+            radial-gradient(ellipse at 80% 80%, rgba(180, 60, 40, 0.08) 0%, transparent 50%)
+          `,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
       />
+
+      {/* Animated particles/glow effect */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-gold-500/5 rounded-full blur-3xl animate-float" />
+        <div className="absolute bottom-0 right-20 w-96 h-96 bg-red-900/5 rounded-full blur-3xl animate-float" style={{ animationDelay: "2s" }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 w-80 h-80 bg-gold-600/5 rounded-full blur-3xl animate-float" style={{ animationDelay: "1s" }} />
+      </div>
 
       {/* Content */}
       <div className="relative z-10 h-full flex flex-col items-center justify-center px-4 py-20 text-center">

@@ -80,12 +80,6 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
-      transitionDuration: {
-        // Named instead of an arbitrary duration-[1400ms] value: tailwindcss-animate
-        // also defines a `duration-*` utility (for animation-duration), and Tailwind
-        // silently drops ambiguous arbitrary-value classes rather than emitting them.
-        "1400": "1400ms",
-      },
       fontFamily: {
         serif: ["Crimson Text", "Georgia", "serif"],
         sans: ["Inter", "sans-serif"],

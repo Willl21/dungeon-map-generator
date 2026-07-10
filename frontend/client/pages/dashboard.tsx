@@ -7,7 +7,6 @@ import StatisticsCards from "@/components/StatisticsCards";
 import RecentMapsGallery from "@/components/RecentMapsGallery";
 import ActivityTimeline from "@/components/ActivityTimeline";
 import { fetchMe, fetchMyMaps, UserInfo, MapMeta } from "@/lib/mapApi";
-import { BackgroundState } from "@/background";
 
 export default function Dashboard() {
     const { isLoggedIn, logout } = useAuth();
@@ -54,22 +53,22 @@ export default function Dashboard() {
     // Loading State
     if (loading) {
         return (
-            <BackgroundState id="dashboard" className="relative z-10 flex min-h-screen flex-col items-center justify-center pt-20">
+            <div className="min-h-screen bg-background flex flex-col items-center justify-center pt-20">
                 <Navbar />
-                <div className="relative z-10 flex-1 flex flex-col items-center justify-center space-y-4">
+                <div className="flex-1 flex flex-col items-center justify-center space-y-4">
                     <div className="w-16 h-16 border-4 border-gold-600/30 border-t-gold-500 rounded-full animate-spin" />
                     <p className="text-gold-400 font-serif animate-pulse">Consulting the ancient tomes...</p>
                 </div>
-            </BackgroundState>
+            </div>
         );
     }
 
     // Error State
     if (error) {
         return (
-            <BackgroundState id="dashboard" className="relative z-10 flex min-h-screen flex-col items-center justify-center pt-20">
+            <div className="min-h-screen bg-background flex flex-col items-center justify-center pt-20">
                 <Navbar />
-                <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto">
+                <div className="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto">
                     <div className="w-16 h-16 rounded-full bg-red-950/50 flex items-center justify-center text-red-500 text-3xl mb-4">
                         ⚠️
                     </div>
@@ -79,7 +78,7 @@ export default function Dashboard() {
                         Retry Ritual
                     </button>
                 </div>
-            </BackgroundState>
+            </div>
         );
     }
 
@@ -88,7 +87,7 @@ export default function Dashboard() {
     };
 
     return (
-        <BackgroundState id="dashboard" className="relative z-10 min-h-screen">
+        <div className="min-h-screen bg-background">
             {/* Dashboard Navbar */}
             <Navbar />
 
@@ -133,6 +132,6 @@ export default function Dashboard() {
                     <div className="h-8" />
                 </div>
             </main>
-        </BackgroundState>
+        </div>
     );
 }

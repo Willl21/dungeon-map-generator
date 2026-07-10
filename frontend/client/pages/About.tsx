@@ -3,8 +3,8 @@ import { Heart, Users, Sparkles } from "lucide-react";
 
 export default function About() {
   return (
-    <Layout backgroundState="void">
-      <section className="py-20 px-4">
+    <Layout>
+      <section className="py-20 px-4 bg-stone-900">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="text-center mb-16">

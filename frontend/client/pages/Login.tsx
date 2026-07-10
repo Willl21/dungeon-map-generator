@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { BackgroundState } from "@/background";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -77,9 +76,10 @@ export default function Login() {
   };
 
   return (
-    <BackgroundState id="auth" className="relative z-10 flex min-h-screen flex-col">
+    <div className="min-h-screen bg-stone-900 flex flex-col">
+      
       {/* NAVBAR */}
-      <nav className="relative z-10 border-b border-gold-900/30">
+      <nav className="border-b border-gold-900/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <Link to="/" className="group">
@@ -93,7 +93,7 @@ export default function Login() {
       </nav>
 
       {/* MAIN */}
-      <div className="relative z-10 flex-1 flex items-center justify-center px-4 py-12">
+      <div className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
 
           {/* BACKGROUND EFFECT */}
@@ -214,6 +214,6 @@ export default function Login() {
 
         </div>
       </div>
-    </BackgroundState>
+    </div>
   );
 }

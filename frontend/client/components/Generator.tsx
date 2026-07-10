@@ -103,7 +103,7 @@ export default function Generator() {
   };
 
   return (
-    <section className="relative py-20 px-4">
+    <section className="relative py-20 px-4 bg-stone-900">
       <div className="max-w-6xl mx-auto">
 
         {/* HEADER */}
