@@ -3,8 +3,8 @@ import Features from "@/components/Features";
 
 export default function FeaturesPage() {
   return (
-    <Layout>
-      <section className="py-12 px-4 bg-stone-900">
+    <Layout backgroundState="gold">
+      <section className="py-12 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="mb-12">
             <h1 className="text-5xl font-serif font-bold mb-4">

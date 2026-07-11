@@ -14,7 +14,7 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <Layout>
+    <Layout backgroundState="ember">
       <section className="flex-1 flex items-center justify-center px-4 py-20">
         <div className="text-center max-w-2xl">
           <MapPin className="h-24 w-24 text-gold-500/40 mx-auto mb-8" />

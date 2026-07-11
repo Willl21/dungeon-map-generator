@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, User } from "lucide-react";
+import { useActiveBackground } from "@/background";
 
 export default function Register() {
   const navigate = useNavigate();
+
+  useActiveBackground("auth");
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -58,10 +61,9 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-900 flex flex-col">
-
+    <div className="relative z-10 flex min-h-screen flex-col">
       {/* NAVBAR */}
-      <nav className="border-b border-gold-900/30">
+      <nav className="relative z-10 border-b border-gold-900/30">
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center">
           <Link to="/" className="text-2xl font-bold text-gold-400">
             Dungeon Generator
@@ -70,7 +72,7 @@ export default function Register() {
       </nav>
 
       {/* CONTENT */}
-      <div className="flex-1 flex items-center justify-center px-4">
+      <div className="relative z-10 flex-1 flex items-center justify-center px-4">
         <div className="w-full max-w-md">
 
           <div className="card-dark rounded-2xl p-8 space-y-6">

@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useRef, useId, useEffect, CSSProperties } from 'react';
-import { animate, useMotionValue, AnimationPlaybackControls } from 'framer-motion';
+import { useRef, useId, useEffect, type CSSProperties } from 'react';
+import { animate, useMotionValue, type AnimationPlaybackControls } from 'framer-motion';
 
 // Type definitions
 interface ResponsiveImage {
@@ -31,6 +31,14 @@ interface ShadowOverlayProps {
     noise?: NoiseConfig;
     style?: CSSProperties;
     className?: string;
+    showTitle?: boolean;
+    /**
+     * Freeze ONLY the hue-rotate animation loop while the layer is inactive
+     * (CPU saving). The displacement filter itself stays mounted regardless,
+     * so a layer's appearance never pops on/off mid-crossfade — pausing must
+     * not be visible, only felt in the frame budget.
+     */
+    paused?: boolean;
 }
 
 function mapRange(
@@ -54,16 +62,24 @@ const useInstanceId = (): string => {
     return instanceId;
 };
 
-export function Component({
+export function EtheralShadow({
     sizing = 'fill',
     color = 'rgba(128, 128, 128, 1)',
     animation,
     noise,
     style,
-    className
+    className,
+    showTitle = false,
+    paused = false
 }: ShadowOverlayProps) {
     const id = useInstanceId();
-    const animationEnabled = animation && animation.scale > 0;
+    // Whether the displacement filter is rendered at all — depends ONLY on the
+    // config, never on `paused`. Keeping it stable across active/inactive is
+    // what stops the crossfade from blinking.
+    const displacementEnabled = !!animation && animation.scale > 0;
+    // Whether the hue-rotate loop should be running right now — this is the
+    // only thing `paused` gates.
+    const runHueAnimation = displacementEnabled && !paused;
     const feColorMatrixRef = useRef<SVGFEColorMatrixElement>(null);
     const hueRotateMotionValue = useMotionValue(180);
     const hueRotateAnimation = useRef<AnimationPlaybackControls | null>(null);
@@ -72,7 +88,7 @@ export function Component({
     const animationDuration = animation ? mapRange(animation.speed, 1, 100, 1000, 50) : 1;
 
     useEffect(() => {
-        if (feColorMatrixRef.current && animationEnabled) {
+        if (feColorMatrixRef.current && runHueAnimation) {
             if (hueRotateAnimation.current) {
                 hueRotateAnimation.current.stop();
             }
@@ -97,7 +113,7 @@ export function Component({
                 }
             };
         }
-    }, [animationEnabled, animationDuration, hueRotateMotionValue]);
+    }, [runHueAnimation, animationDuration, hueRotateMotionValue]);
 
     return (
         <div
@@ -114,10 +130,10 @@ export function Component({
                 style={{
                     position: "absolute",
                     inset: -displacementScale,
-                    filter: animationEnabled ? `url(#${id}) blur(4px)` : "none"
+                    filter: displacementEnabled ? `url(#${id}) blur(4px)` : "none"
                 }}
             >
-                {animationEnabled && (
+                {displacementEnabled && (
                     <svg style={{ position: "absolute" }}>
                         <defs>
                             <filter id={id}>
@@ -169,20 +185,22 @@ export function Component({
                 />
             </div>
 
-            <div
-                style={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    textAlign: "center",
-                    zIndex: 10
-                }}
-            >
-                <h1 className="md:text-7xl text-6xl lg:text-8xl font-bold text-center text-foreground relative z-20">
-                    Etheral Shadows
-                </h1>
-            </div>
+            {showTitle && (
+                <div
+                    style={{
+                        position: "absolute",
+                        top: "50%",
+                        left: "50%",
+                        transform: "translate(-50%, -50%)",
+                        textAlign: "center",
+                        zIndex: 10
+                    }}
+                >
+                    <h1 className="md:text-7xl text-6xl lg:text-8xl font-bold text-center text-foreground relative z-20">
+                        Etheral Shadows
+                    </h1>
+                </div>
+            )}
 
             {noise && noise.opacity > 0 && (
                 <div
