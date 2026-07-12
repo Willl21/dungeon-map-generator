@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useActiveBackground } from "@/background";
+import { API_BASE_URL } from "@/lib/apiConfig";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -45,7 +46,7 @@ export default function Login() {
     setError("");
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/login", {
+      const res = await fetch(`${API_BASE_URL}/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -3,18 +3,15 @@ load_dotenv()
 
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 import io
 import base64
-from pathlib import Path
 from datetime import datetime
 
 from pydantic import BaseModel
 from typing import Optional
-import os
 
 from jose import jwt, JWTError
 from sqlalchemy.exc import IntegrityError
@@ -37,13 +34,15 @@ from generators.environments.swamp import SwampEnvironment
 
 from renderers.base_renderer import render_to_image
 from services.sd_service import beautify_map
-from services.map_service import save_map_file, save_map_record, delete_map_file
+from services.map_service import (
+    save_map_file,
+    save_map_record,
+    delete_map_file,
+    get_map_bytes,
+    object_key_to_url,
+)
 
 models.Base.metadata.create_all(bind=engine)
-
-Path("uploads").mkdir(exist_ok=True)
-
-BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 
 app = FastAPI(title="D&D Map Generator API")
 
@@ -54,7 +53,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+# Map images now live in Cloudflare R2 (object storage), not on local disk —
+# no StaticFiles mount needed. Images are served straight from R2's public URL
+# (see object_key_to_url), which survives redeploys and offloads bandwidth.
 
 security = HTTPBearer()
 
@@ -291,8 +292,7 @@ async def generate_map(
         raise HTTPException(400, "invalid environment")
 
     result, final_bytes = await build_map(req)
-    file_path = save_map_file(final_bytes, user_id)
-    relative_path = file_path.as_posix()
+    object_key = save_map_file(final_bytes, user_id)
     db = SessionLocal()
     try:
         record = save_map_record(
@@ -303,15 +303,15 @@ async def generate_map(
             seed=req.seed,
             image_preset=req.image_preset,
             beautify=req.beautify,
-            image_path=relative_path,
+            image_path=object_key,
         )
         record_id = record.id
     finally:
         db.close()
 
-    image_url = f"{BASE_URL}/{relative_path}"
+    image_url = object_key_to_url(object_key)
     width, height = get_map_size(req.map_type)
-    print(f"[generate] user={user_id} map_id={record_id} path={relative_path}")
+    print(f"[generate] user={user_id} map_id={record_id} key={object_key}")
     return MapResponse(
         id=record_id,
         seed=req.seed,
@@ -337,7 +337,6 @@ def my_maps(user_id: int = Depends(get_current_user)):
 
         result = []
         for m in maps:
-            clean_path = m.image_path.replace("\\", "/")
             result.append(MapMeta(
                 id=m.id,
                 map_type=m.map_type,
@@ -345,7 +344,7 @@ def my_maps(user_id: int = Depends(get_current_user)):
                 seed=m.seed,
                 image_preset=m.image_preset,
                 beautify=m.beautify,
-                image_url=f"{BASE_URL}/{clean_path}",
+                image_url=object_key_to_url(m.image_path),
                 created_at=m.created_at.isoformat() if m.created_at else "",
             ))
 
@@ -371,7 +370,6 @@ def get_map(map_id: int, user_id: int = Depends(get_current_user)):
         if m.user_id != user_id:
             raise HTTPException(403, "Forbidden")
 
-        clean_path = m.image_path.replace("\\", "/")
         return MapMeta(
             id=m.id,
             map_type=m.map_type,
@@ -379,7 +377,7 @@ def get_map(map_id: int, user_id: int = Depends(get_current_user)):
             seed=m.seed,
             image_preset=m.image_preset,
             beautify=m.beautify,
-            image_url=f"{BASE_URL}/{clean_path}",
+            image_url=object_key_to_url(m.image_path),
             created_at=m.created_at.isoformat() if m.created_at else "",
         )
     finally:
@@ -436,7 +434,7 @@ def delete_map(map_id: int, user_id: int = Depends(get_current_user)):
 @app.get("/download/{map_id}")
 def download_map_by_id(map_id: int, user_id: int = Depends(get_current_user)):
     """
-    Kirim file PNG menggunakan FileResponse.
+    Ambil PNG dari R2 lalu stream ke client sebagai attachment.
     Hanya pemilik yang dapat mendownload.
     """
     db = SessionLocal()
@@ -449,20 +447,50 @@ def download_map_by_id(map_id: int, user_id: int = Depends(get_current_user)):
         if m.user_id != user_id:
             raise HTTPException(403, "Forbidden")
 
-        file_path = Path(m.image_path)
-
-        if not file_path.exists():
-            raise HTTPException(404, "File not found on disk")
+        try:
+            image_bytes = get_map_bytes(m.image_path)
+        except Exception:
+            raise HTTPException(404, "File not found in storage")
 
         filename = f"map_{m.map_type}_{m.environment}_{m.seed}.png"
 
-        return FileResponse(
-            path=str(file_path),
+        return StreamingResponse(
+            io.BytesIO(image_bytes),
             media_type="image/png",
-            filename=filename,
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
     finally:
         db.close()
+
+
+# =====================
+# PUBLIC IMAGE PROXY
+# =====================
+
+@app.get("/files/{key:path}")
+def serve_map_image(key: str):
+    """
+    Proxy publik untuk menampilkan gambar map lewat <img src>.
+
+    Kenapa perlu: URL r2.dev bawaan Cloudflare diblokir sebagian ISP Indonesia
+    (Biznet/IndiHome menyajikan sertifikat block-page → ERR_CERT_COMMON_NAME_INVALID).
+    Backend mengambil object dari R2 via S3 API (yang tidak diblokir) lalu
+    men-stream-nya, jadi browser hanya bicara ke domain backend ini.
+
+    Publik & tanpa auth — sama seperti perilaku URL r2.dev sebelumnya; object
+    key mengandung suffix acak sehingga tidak mudah ditebak. (Endpoint
+    /download/{id} yang owner-only tetap dipakai untuk unduh dengan nama file.)
+    """
+    try:
+        image_bytes = get_map_bytes(key)
+    except Exception:
+        raise HTTPException(404, "Image not found")
+
+    return StreamingResponse(
+        io.BytesIO(image_bytes),
+        media_type="image/png",
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+    )
 
 
 # =====================

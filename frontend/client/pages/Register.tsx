@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, User } from "lucide-react";
 import { useActiveBackground } from "@/background";
+import { API_BASE_URL } from "@/lib/apiConfig";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -33,7 +34,7 @@ export default function Register() {
     setSuccess("");
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/register", {
+      const res = await fetch(`${API_BASE_URL}/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
