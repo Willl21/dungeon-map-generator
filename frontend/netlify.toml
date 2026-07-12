@@ -12,3 +12,11 @@ force = true
 from = "/api/*"
 status = 200
 to = "/.netlify/functions/api/:splat"
+
+# SPA fallback: setiap rute non-file dilayani index.html supaya React Router
+# yang menangani (refresh/deep-link ke /dashboard, /generate, dll tidak 404).
+# HARUS di bawah aturan /api/* agar tidak menimpanya.
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200
