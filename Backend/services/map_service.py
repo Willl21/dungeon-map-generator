@@ -45,6 +45,10 @@ R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL", "").rstrip("/")
 # untuk mem-proxy gambar lewat endpoint /files/{key} saat serve langsung tidak
 # memungkinkan (r2.dev diblokir).
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://localhost:8000").rstrip("/")
+# Jaga-jaga kalau env diisi tanpa scheme (mis. "xxx.up.railway.app") — tanpa
+# http(s):// browser menganggapnya path relatif dan URL gambar jadi rusak.
+if PUBLIC_BASE_URL and not PUBLIC_BASE_URL.startswith(("http://", "https://")):
+    PUBLIC_BASE_URL = "https://" + PUBLIC_BASE_URL
 
 _s3_client = None
 
