@@ -108,10 +108,10 @@ export default function Navbar() {
         {isOpen && (
           <div className="md:hidden pt-4 pb-6 space-y-4 border-t border-gold-900/30">
 
-            <Link to="/" onClick={() => setIsOpen(false)}>Home</Link>
-            <Link to="/generate" onClick={() => setIsOpen(false)}>Generate</Link>
-            <Link to="/features" onClick={() => setIsOpen(false)}>Features</Link>
-            <Link to="/about" onClick={() => setIsOpen(false)}>About</Link>
+            <Link to="/" onClick={() => setIsOpen(false)} className="block py-1 hover:text-gold-400">Home</Link>
+            <Link to="/generate" onClick={() => setIsOpen(false)} className="block py-1 hover:text-gold-400">Generate</Link>
+            <Link to="/features" onClick={() => setIsOpen(false)} className="block py-1 hover:text-gold-400">Features</Link>
+            <Link to="/about" onClick={() => setIsOpen(false)} className="block py-1 hover:text-gold-400">About</Link>
 
             {!isLoggedIn ? (
               <>
