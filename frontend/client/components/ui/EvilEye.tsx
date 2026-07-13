@@ -252,9 +252,25 @@ export default function EvilEye({
         const mesh = new Mesh(gl, { geometry, program });
         container.appendChild(gl.canvas);
 
-        let animationFrameId: number;
+        let animationFrameId = 0;
+
+        // This shader loop runs forever in the Navbar (every page). Without
+        // a visibility check it keeps rendering at full rate even when the
+        // browser tab is backgrounded/minimized, burning CPU/GPU for a
+        // 48x48px icon nobody is looking at — a real, easy-to-miss source of
+        // "the whole laptop gets laggy with this site open in a tab."
+        function handleVisibilityChange() {
+            if (document.visibilityState === 'visible' && !animationFrameId) {
+                animationFrameId = requestAnimationFrame(update);
+            }
+        }
+        document.addEventListener('visibilitychange', handleVisibilityChange);
 
         function update(time: number) {
+            if (document.visibilityState !== 'visible') {
+                animationFrameId = 0;
+                return;
+            }
             animationFrameId = requestAnimationFrame(update);
             mouse.x += (mouse.tx - mouse.x) * 0.05;
             mouse.y += (mouse.ty - mouse.y) * 0.05;
@@ -266,6 +282,7 @@ export default function EvilEye({
 
         return () => {
             cancelAnimationFrame(animationFrameId);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
             window.removeEventListener('resize', resize);
             container.removeEventListener('mousemove', onMouseMove);
             container.removeEventListener('mouseleave', onMouseLeave);

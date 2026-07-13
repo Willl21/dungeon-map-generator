@@ -3,7 +3,7 @@ import { animate, motionValue, type MotionValue } from "framer-motion";
 import { BackgroundContext } from "./BackgroundContext";
 import { backgroundStateKeys, type BackgroundStateKey } from "./config";
 
-const TRANSITION_SECONDS = 1.6;
+export const TRANSITION_SECONDS = 1.6;
 // Silky asymmetric ease (slow-in, long glide-out) rather than the more
 // mechanical symmetric easeInOut — reads as a softer mood dissolve.
 const TRANSITION_EASE = [0.4, 0, 0.2, 1] as const;

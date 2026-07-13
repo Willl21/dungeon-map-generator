@@ -308,6 +308,8 @@ function MapCard({
                     <img
                         src={map.image_url}
                         alt={map.map_type}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                 ) : (

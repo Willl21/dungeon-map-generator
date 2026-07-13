@@ -171,6 +171,8 @@ export default function MyMaps() {
                 <img
                   src={map.image_url}
                   alt={`${map.map_type} - ${map.environment}`}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = "none";
