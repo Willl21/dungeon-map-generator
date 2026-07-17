@@ -44,7 +44,6 @@ export default function Navbar() {
           {/* DESKTOP MENU */}
           <div className="hidden md:flex items-center space-x-8">
             <Link to="/" className="hover:text-gold-400">Home</Link>
-            <Link to="/generate" className="hover:text-gold-400">Generate</Link>
             <Link to="/features" className="hover:text-gold-400">Features</Link>
             <Link to="/about" className="hover:text-gold-400">About</Link>
             {isLoggedIn && (
@@ -58,13 +57,6 @@ export default function Navbar() {
             {!isLoggedIn ? (
               <>
                 {/* BELUM LOGIN */}
-                <Link
-                  to="/login"
-                  className="text-foreground hover:text-gold-400 font-semibold"
-                >
-                  Sign In
-                </Link>
-
                 <button
                   onClick={() => navigate("/login")}
                   className="fantasy-button"
