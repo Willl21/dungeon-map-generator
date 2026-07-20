@@ -83,6 +83,7 @@ export function EtheralShadow({
     const feColorMatrixRef = useRef<SVGFEColorMatrixElement>(null);
     const hueRotateMotionValue = useMotionValue(180);
     const hueRotateAnimation = useRef<AnimationPlaybackControls | null>(null);
+    const lastFilterWrite = useRef(0);
 
     const displacementScale = animation ? mapRange(animation.scale, 1, 100, 20, 100) : 0;
     const animationDuration = animation ? mapRange(animation.speed, 1, 100, 1000, 50) : 1;
@@ -101,8 +102,13 @@ export function EtheralShadow({
                 ease: "linear",
                 delay: 0,
                 onUpdate: (value: number) => {
-                    if (feColorMatrixRef.current) {
+                    // SVG filter repaints are expensive (software-rasterized);
+                    // capping writes to ~30fps halves that cost with no visible
+                    // difference since the hue drift is slow and linear anyway.
+                    const now = performance.now();
+                    if (feColorMatrixRef.current && now - lastFilterWrite.current >= 33) {
                         feColorMatrixRef.current.setAttribute("values", String(value));
+                        lastFilterWrite.current = now;
                     }
                 }
             });

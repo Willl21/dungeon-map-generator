@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useState } from "react";
 
 interface AuthContextType {
   isLoggedIn: boolean;
@@ -10,12 +10,12 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [token, setToken] = useState<string | null>(null);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("token");
-    if (saved) setToken(saved);
-  }, []);
+  // Read synchronously so `isLoggedIn` is correct on the very first render —
+  // deferring this to a useEffect left one render where a logged-in user
+  // still read as logged-out, which ProtectedRoute caught and redirected on.
+  const [token, setToken] = useState<string | null>(() =>
+    localStorage.getItem("token"),
+  );
 
   const login = (newToken: string) => {
     localStorage.setItem("token", newToken);

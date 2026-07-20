@@ -306,7 +306,11 @@ function MapCard({
                 {/* If image_url exists, show image. Otherwise show gradient placeholder */}
                 {map.image_url ? (
                     <img
-                        src={map.image_url}
+                        // Card renders at ~500px CSS width but source PNGs are
+                        // 1024-1280px — ask the backend to downscale so we don't
+                        // ship/decode 2x the pixels this card ever shows. The
+                        // modal/download below still use the untouched image_url.
+                        src={`${map.image_url}?w=700`}
                         alt={map.map_type}
                         loading="lazy"
                         decoding="async"

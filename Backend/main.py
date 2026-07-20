@@ -468,7 +468,7 @@ def download_map_by_id(map_id: int, user_id: int = Depends(get_current_user)):
 # =====================
 
 @app.get("/files/{key:path}")
-def serve_map_image(key: str):
+def serve_map_image(key: str, w: int | None = None):
     """
     Proxy publik untuk menampilkan gambar map lewat <img src>.
 
@@ -480,11 +480,31 @@ def serve_map_image(key: str):
     Publik & tanpa auth — sama seperti perilaku URL r2.dev sebelumnya; object
     key mengandung suffix acak sehingga tidak mudah ditebak. (Endpoint
     /download/{id} yang owner-only tetap dipakai untuk unduh dengan nama file.)
+
+    `?w=` opsional me-resize gambar ke lebar tsb sebelum dikirim (dipakai
+    grid thumbnail dashboard, yang menampilkan gambar ~500px lebar padahal
+    file aslinya 1024-1280px — tanpa ini browser mendownload & mendecode
+    2-2.5x lebih banyak piksel daripada yang pernah terlihat). Full-res
+    tetap dipakai di modal preview & download dengan tidak mengirim `w`.
+    Di-resize on-the-fly, bukan disimpan sebagai varian baru di R2 — untuk
+    volume saat ini tidak butuh caching tambahan di luar Cache-Control
+    (ponytail: kalau traffic naik, cache hasil resize per (key,w) di R2).
     """
     try:
         image_bytes = get_map_bytes(key)
     except Exception:
         raise HTTPException(404, "Image not found")
+
+    if w and 0 < w < 2000:
+        from PIL import Image
+
+        img = Image.open(io.BytesIO(image_bytes))
+        if w < img.width:
+            height = round(img.height * (w / img.width))
+            img = img.resize((w, height), Image.LANCZOS)
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            image_bytes = buf.getvalue()
 
     return StreamingResponse(
         io.BytesIO(image_bytes),
